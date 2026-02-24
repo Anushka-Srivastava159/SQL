@@ -65,3 +65,46 @@ select
 		as date 
 	) as prd_end_date -- calculate end date as one day before	the next start date
 from bronze.crm_prd_info
+
+/*
+=======================================================================================================
+										silver.crm_sales_details
+=======================================================================================================
+*/
+
+
+insert into silver.crm_sales_details(
+sls_ord_num,
+	sls_prd_key,
+	sls_cust_id,
+	sls_order_dt,
+	sls_ship_dt,
+	sls_due_dt,
+	sls_sales ,
+	sls_quantity,
+	sls_price
+)
+select
+sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+
+case when sls_order_dt =0 or LEN(sls_order_dt)!= 8 then null	--handling invalid data
+	else CAST(CAST(sls_order_dt as varchar) as date)			--datatype casting
+end as sls_order_dt,
+case when sls_ship_dt =0 or LEN(sls_ship_dt)!= 8 then null
+	else CAST(CAST(sls_ship_dt as varchar) as date)
+end as sls_ship_dt,
+case when sls_due_dt =0 or LEN(sls_due_dt)!= 8 then null
+	else CAST(CAST(sls_due_dt as varchar) as date)
+end as sls_due_dt,
+case when sls_sales IS NULL OR sls_sales<=0 OR sls_sales!=sls_quantity*sls_price 
+		then sls_quantity*ABS(sls_price)
+	else sls_sales
+end as sls_sales,		--recalculate sales if original value is missing or incorrect
+sls_quantity,
+case when sls_price IS NULL OR sls_price<=0
+		then sls_sales/ nullif(sls_quantity, 0)
+	else sls_price		--derive price if original value is invalid
+end as sls_price
+from bronze.crm_sales_details
