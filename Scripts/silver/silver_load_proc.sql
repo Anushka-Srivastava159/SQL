@@ -108,3 +108,23 @@ case when sls_price IS NULL OR sls_price<=0
 	else sls_price		--derive price if original value is invalid
 end as sls_price
 from bronze.crm_sales_details
+
+
+/*
+=======================================================================================================
+										silver.silver.erp_cust_az12
+=======================================================================================================
+*/
+insert into silver.erp_cust_az12(cid, bdate, gen)
+select 
+case when cid like 'NAS%' then SUBSTRING(cid, 4, LEN(cid))	--remove 'NAS' prefix 
+	else cid
+end as cid,
+case when bdate > GETDATE() then null
+	else bdate
+end as bdate,	--set future birthdates to NULL
+case when upper(TRIM(gen)) in ('F', 'FEMALE') then 'Female'
+	 when upper(TRIM(gen)) in ('M', 'MALE') then 'Male'
+	else 'n/a'
+end as gen	--normalize gender values and handling unknown cases
+from bronze.erp_cust_az12
