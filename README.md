@@ -52,13 +52,13 @@ The data warehouse follows a three-layer architecture:
 
 3.  **Silver Layer Setup:**
     *   Execute `Scripts/silver/ddl_silver.sql` to create the cleaned tables.
-    *   Execute `Scripts/silver/silver_load_proc.sql` to perform data cleaning and transformation from Bronze to Silver.
+    *   Execute `Scripts/silver/silver_load_proc.sql` to perform data cleaning, transformation and load data from Bronze to Silver.
 
 ## Key Features
 
 *   **Medallion Architecture:** Logical separation of data based on quality and purpose.
 *   **Stored Procedures:** Automated ETL processes for repeatable data loading.
-*   **Data Cleaning:** Robust handling of marital status, gender codes, and date formats.
+*   **Data Cleaning:** Robust handling of low cardinality data and date formats.
 *   **Performance Optimization:** Use of `TABLOCK` and `TRUNCATE` for efficient bulk loading.
 
 ## Future Enhancements
