@@ -228,3 +228,33 @@ or sls_sales is null or sls_quantity is null or sls_price is null
 or sls_sales <=0 or sls_quantity <=0 or sls_price <=0
 
 select * from silver.crm_sales_details
+
+/*
+=======================================================================================================
+										silver.silver.erp_cust_az12
+=======================================================================================================
+*/
+
+select 
+case when cid like 'NAS%' then SUBSTRING(cid, 4, LEN(cid))
+	else cid
+end as cid,
+bdate,
+gen
+from bronze.erp_cust_az12
+where case when cid like 'NAS%' then SUBSTRING(cid, 4, LEN(cid))
+	else cid
+end not in (select distinct cst_key from silver.crm_cust_info)
+
+--identify out of range dates
+select distinct
+bdate 
+from silver.erp_cust_az12
+where bdate < '1924-01-01' or bdate > GETDATE()
+
+--data standadization & consistency
+select distinct 
+gen
+from silver.erp_cust_az12
+
+select * from silver.erp_cust_az12
