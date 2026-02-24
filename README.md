@@ -2,7 +2,7 @@
 
 This project demonstrates the construction of a modern Data Warehouse using SQL Server. It implements a medallion architecture (Bronze, Silver, Gold layers) to process, clean, and transform raw data into a structured format suitable for analytics.
 
-![Data Architecture](Data_achitecture.drawio.png)
+![Data Architecture](Docs/Data_achitecture.drawio.png)
 
 ## Project Architecture
 
@@ -14,8 +14,9 @@ The data warehouse follows a three-layer architecture:
 
 ## Directory Structure
 ```
-├── Data Architecture.drawio.png      # Architectural diagram
-├── Data integration.drawio.png       # Integration workflow
+├── Docs/
+│   ├── Data_achitecture.drawio.png    # Architectural diagram
+│   └── Data_integration.drawio.png    # Integration workflow
 ├── Data warehouse/
 │   ├── datasets/                     # Source CSV files
 │   │   ├── source_crm/               # CRM source data
