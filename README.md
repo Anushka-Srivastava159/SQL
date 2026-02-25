@@ -78,18 +78,3 @@ To deploy the entire warehouse and load all data, run the master script using SQ
 *   **Advanced SQL Techniques:** Use of Window Functions (`ROW_NUMBER`), CTEs, and SCD Type 2 logic.
 *   **Data Quality:** Dedicated `tests/` scripts for checking uniqueness, nulls, and schema consistency.
 *   **Comprehensive Documentation:** Full Data Catalog and visual architecture diagrams.
-
-## Future Enhancements & Roadmap
-
-### Phase 1: Cloud Migration (Azure/AWS)
-*   **Data Lake Transition:** Move source CSV files to ADLS Gen2 or AWS S3.
-*   **Cloud Compute:** Migrate to Azure SQL DB or Amazon RDS for scalability.
-*   **Serverless Ingestion:** Utilize Azure Data Factory (ADF) for cloud-native orchestration.
-
-### Phase 2: Orchestration & Automation
-*   **CI/CD Pipelines:** Implement GitHub Actions for automated SQL linting and deployment.
-*   **Scheduling:** Use Airflow or ADF Triggers to automate daily data refreshes.
-
-### Phase 3: Analytics & BI
-*   **Visualization:** Connect the Gold layer to Power BI for interactive dashboards.
-*   **Advanced Modeling:** Implement Predictive Analytics on top of the Gold fact tables.
