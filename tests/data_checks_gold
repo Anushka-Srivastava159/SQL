@@ -1,0 +1,19 @@
+SELECT DISTINCT
+    ci.cst_gndr,
+    ea.gen,
+    CASE WHEN ci.cst_gndr != 'n/a' THEN ci.cst_gndr --CRM is the master for gender info
+         ELSE COALESCE(ea.gen, 'n/a') 
+    END AS gen   
+    FROM silver.crm_cust_info ci
+    LEFT JOIN silver.erp_cust_az12 ea 
+        ON ci.cst_key = ea.cid
+    LEFT JOIN silver.erp_loc_a101 el
+        ON ci.cst_key = el.cid
+    ORDER BY 1,2
+
+    SELECT * FROM gold.fact_sales fs
+    LEFT JOIN gold.dim_customers dc
+    ON fs.customer_key = dc.customer_key
+    LEFT JOIN gold.dim_products dp
+    ON fs.product_key = dp.product_key
+    WHERE dp.product_key IS NULL
