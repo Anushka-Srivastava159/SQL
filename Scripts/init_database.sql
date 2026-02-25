@@ -1,35 +1,47 @@
 /*
-===============================================================
-Create Databse and Schemas
-===============================================================
+===============================================================================
+Database Initialization Script: Create Database and Schemas
+===============================================================================
 Script Purpose:
-  This script creates a new databse names 'DataWarehouse' after checking if it already exists.
-  If the database already exists, it is dropped and recreated. Additionally, the script sets up three schemas whithin 
-  the database: bronze, silver and gold.
+    This script initializes the 'DataWarehouse' database. It first checks if the 
+    database already exists and, if so, drops it to ensure a clean setup. 
+    It then creates the database and defines the standard Medallion Architecture 
+    schemas: 'bronze', 'silver', and 'gold'.
+
+Note:
+    The script requires administrative privileges to drop and recreate the 
+    database. Use with caution in production environments.
+===============================================================================
 */
 
-use master;
-Go
+USE master;
+GO
 
---Drop and recreate the 'DataWarehouse' db
-if exists (select 1 from sys.database where name = 'dataWarehouse')
-begin
-	alter database DataWarehouse set single user with rollback immediate;
-	drop database DataWarehouse;
-end;
-Go
+-- Drop and recreate the 'DataWarehouse' database
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'DataWarehouse')
+BEGIN
+    ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE DataWarehouse;
+END;
+GO
 
---Create "DataWarehouse' databse
-create database DataWarehouse;
-Go
+-- Create 'DataWarehouse' database
+CREATE DATABASE DataWarehouse;
+GO
 
-use DataWarehouse;
-Go
+USE DataWarehouse;
+GO
 
-create schema bronze;
-Go
-create schema silver;
-Go
-create schema gold;
-Go
-Go
+-- Create standard Medallion Architecture schemas
+CREATE SCHEMA bronze;
+GO
+CREATE SCHEMA silver;
+GO
+CREATE SCHEMA gold;
+GO
+
+PRINT '================================================';
+PRINT 'Database Initialization Complete';
+PRINT 'Database: DataWarehouse';
+PRINT 'Schemas: bronze, silver, gold';
+PRINT '================================================';

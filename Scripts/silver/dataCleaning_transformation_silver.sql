@@ -1,260 +1,208 @@
 /*
 =======================================================================================================
-										silver.crm_cust_info
+                                        silver.crm_cust_info
 =======================================================================================================
+Script Purpose:
+    This script contains SQL queries for data quality checks and prototyping the 
+    transformation logic for the silver.crm_cust_info table.
 */
 
---check for nulls or duplicates in primary key
---expectation: no result
+-- Check for NULLs or duplicates in primary key
+-- Expectation: No result
+SELECT
+    cst_id,
+    COUNT(*) AS record_count
+FROM silver.crm_cust_info
+GROUP BY cst_id
+HAVING COUNT(*) > 1 OR cst_id IS NULL;
 
-select
-cst_id,
-COUNT(*)
-from silver.crm_cust_info
-group by cst_id
-having COUNT(*)>1 or cst_id is null
+-- Check for unwanted spaces
+-- Expectation: No results
+SELECT cst_firstname FROM silver.crm_cust_info WHERE cst_firstname != TRIM(cst_firstname);
+SELECT cst_lastname FROM silver.crm_cust_info WHERE cst_lastname != TRIM(cst_lastname);
+SELECT cst_gndr FROM silver.crm_cust_info WHERE cst_gndr != TRIM(cst_gndr);
 
---check for unwanted spaces
---expectation: no results
+-- Transforming by trimming and data normalization
+SELECT
+    cst_id,
+    cst_key,
+    TRIM(cst_firstname) AS cst_firstname,
+    TRIM(cst_lastname) AS cst_lastname,
+    CASE WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
+         WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
+         ELSE 'n/a'
+    END AS cst_marital_status,
+    CASE WHEN UPPER(TRIM(cst_gndr)) = 'F' THEN 'Female'
+         WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
+         ELSE 'n/a'
+    END AS cst_gndr,
+    cst_create_date
+FROM (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS flag_last
+    FROM bronze.crm_cust_info
+) t WHERE flag_last = 1;
 
-select cst_firstname
-from silver.crm_cust_info
-where cst_firstname!=trim(cst_firstname)
+-- Data standardization and consistency
+SELECT DISTINCT cst_gndr FROM bronze.crm_cust_info;
+SELECT DISTINCT cst_marital_status FROM bronze.crm_cust_info;
 
-select cst_lastname
-from silver.crm_cust_info
-where cst_lastname!=trim(cst_lastname)
-
-select cst_gndr
-from silver.crm_cust_info
-where cst_gndr!=trim(cst_gndr)
-
---Transforming by trimming and data normalization
-
-select
-cst_id,
-cst_key,
-trim(cst_firstname) as cst_firstname,
-trim(cst_lastname) as cst_lastname,
-case when upper(trim(cst_marital_status))='S' then 'Single'
-	when upper(trim(cst_marital_status))='M' then 'Married'
-	else 'n/a'
-end cst_marital_status,
-case when upper(trim(cst_gndr))='F' then 'Female'
-	when upper(trim(cst_gndr))='M' then 'Male'
-	else 'n/a'
-end cst_gndr,
-cst_create_date
-from(
-	select *,
-	ROW_NUMBER() over (partition by cst_id order by cst_create_date desc) as flag_last
-	from bronze.crm_cust_info
-	)t where flag_last=1
-
--- data standardization and consistency
-select distinct cst_gndr 
-from bronze.crm_cust_info
-
-select distinct cst_marital_status 
-from bronze.crm_cust_info
-
---checking results
-
-select * from silver.crm_cust_info
+-- Checking results
+SELECT * FROM silver.crm_cust_info;
 
 /*
 =======================================================================================================
-										silver.crm_prd_info
+                                        silver.crm_prd_info
 =======================================================================================================
 */
 	
---check for nulls or duplicates in primary key
---expectation: no result
-select
-prd_id,
-COUNT(*)
-from silver.crm_prd_info
-group by prd_id
-having COUNT(*)>1 or prd_id is null
+-- Check for NULLs or duplicates in primary key
+-- Expectation: No result
+SELECT
+    prd_id,
+    COUNT(*) AS record_count
+FROM silver.crm_prd_info
+GROUP BY prd_id
+HAVING COUNT(*) > 1 OR prd_id IS NULL;
 
--- extracting category id from product key in crm_prd_info table with erp_px_cat_g1v2 table id column
-select 
-prd_id,
-prd_key,
-replace(SUBSTRING(prd_key, 1, 5), '-', '_') as cat_id,
-SUBSTRING(prd_key, 7, len(prd_key)) as prd_key,
-prd_name,
-prd_cost,
-prd_line,
-prd_start_date,
-prd_end_date
-from bronze.crm_prd_info
-where replace(SUBSTRING(prd_key, 1, 5), '-', '_') not in 
-(select distinct id from bronze.erp_px_cat_g1v2)
+-- Extracting category id from product key in crm_prd_info table with erp_px_cat_g1v2 table id column
+SELECT 
+    prd_id,
+    prd_key,
+    REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+    SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+    prd_name,
+    prd_cost,
+    prd_line,
+    prd_start_date,
+    prd_end_date
+FROM bronze.crm_prd_info
+WHERE REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') NOT IN 
+    (SELECT DISTINCT id FROM bronze.erp_px_cat_g1v2);
 
--- transforming prd_key in crm_prd_info table to match sls_prd_key in crm_sales_details table
-select 
-prd_id,
-prd_key,
-replace(SUBSTRING(prd_key, 1, 5), '-', '_') as cat_id,
-SUBSTRING(prd_key, 7, len(prd_key)) as prd_key,
-prd_name,
-prd_cost,
-prd_line,
-prd_start_date,
-prd_end_date
-from bronze.crm_prd_info
-where SUBSTRING(prd_key, 7, len(prd_key)) in 
-(select sls_prd_key from bronze.crm_sales_details)
+-- Transforming prd_key in crm_prd_info table to match sls_prd_key in crm_sales_details table
+SELECT 
+    prd_id,
+    prd_key,
+    REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+    SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+    prd_name,
+    prd_cost,
+    prd_line,
+    prd_start_date,
+    prd_end_date
+FROM bronze.crm_prd_info
+WHERE SUBSTRING(prd_key, 7, LEN(prd_key)) IN 
+    (SELECT sls_prd_key FROM bronze.crm_sales_details);
 
---handling mising data in prd_cost column
-select 
-prd_id,
-prd_key,
-replace(SUBSTRING(prd_key, 1, 5), '-', '_') as cat_id,
-SUBSTRING(prd_key, 7, len(prd_key)) as prd_key,
-prd_name,
-isnull(prd_cost, 0) as prd_cost,
-prd_line,
-prd_start_date,
-prd_end_date
-from bronze.crm_prd_info
+-- Handling missing data in prd_cost column
+SELECT 
+    prd_id,
+    prd_key,
+    REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+    SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+    prd_name,
+    ISNULL(prd_cost, 0) AS prd_cost,
+    prd_line,
+    prd_start_date,
+    prd_end_date
+FROM bronze.crm_prd_info;
 
---check for unwanted spaces
---expectation: no results
+-- Check for unwanted spaces
+-- Expectation: No results
+SELECT prd_name FROM silver.crm_prd_info WHERE prd_name != TRIM(prd_name);
 
-select prd_name
-from silver.crm_prd_info
-where prd_name!=trim(prd_name)
+-- Checking quality of numbers
+-- Expectation: No results
+SELECT prd_cost FROM silver.crm_prd_info WHERE prd_cost < 0 OR prd_cost IS NULL;
 
---checking quality of numbers
---expectation: no results
-select prd_cost 
-from silver.crm_prd_info
-where prd_cost<0 or prd_cost is null
+-- Data standardization & consistency
+SELECT DISTINCT prd_line FROM silver.crm_prd_info;
 
---data standardization & consistency
-select distinct prd_line
-from silver.crm_prd_info
+-- Check for invalid date orders
+SELECT * FROM silver.crm_prd_info WHERE prd_end_date < prd_start_date;
 
---check for invalid date orders
-select *
-from silver	.crm_prd_info
-where prd_end_date<prd_start_date
+/* 
+   200 rows where this scenario was true.
+   In order to clean data so that it projects the right picture, pick few rows
+   paste in excel and try to solve it. 
+   Solution: use start date of next row, -1 it and put as end date.
+   Get it approved and integrate in query.
+*/
 
-/* 200 rows where this scenario was true.
-in order to clean data so that is projects the right picture, pick few rows
-paste in excel and try to solve it. 
-solution: use start daye of next row, -1 it and put as end date.
-get it approved and integrate in query*/
-
---Managing date columns
-select 
-prd_id,
-prd_key,
-prd_name,
-prd_start_date,
-prd_end_date,
-lead(prd_start_date) over (partition by prd_key order by prd_start_date)-1 as prd_end_date_test
-from bronze.crm_prd_info
-where prd_key in ('AC-HE-HL-U509-R', 'AC-HE-HL-U509')
-
+-- Managing date columns
+SELECT 
+    prd_id,
+    prd_key,
+    prd_name,
+    prd_start_date,
+    prd_end_date,
+    LEAD(prd_start_date) OVER (PARTITION BY prd_key ORDER BY prd_start_date) - 1 AS prd_end_date_test
+FROM bronze.crm_prd_info
+WHERE prd_key IN ('AC-HE-HL-U509-R', 'AC-HE-HL-U509');
 
 /*
 =======================================================================================================
-										silver.crm_sales_details
+                                        silver.crm_sales_details
 =======================================================================================================
 */
 
-select
-nullif(sls_order_dt,0) sls_order_dt
-from silver.crm_sales_details
-where sls_order_dt<=0 
-or LEN(sls_order_dt)!=8 
-or sls_order_dt>20500101
-or sls_order_dt<19000101
+-- Handle invalid sls_order_dt
+SELECT NULLIF(sls_order_dt, 0) AS sls_order_dt FROM silver.crm_sales_details
+WHERE sls_order_dt <= 0 OR LEN(sls_order_dt) != 8 OR sls_order_dt > 20500101 OR sls_order_dt < 19000101;
 
-select
-nullif(sls_ship_dt,0) sls_ship_dt
-from bronze.crm_sales_details
-where sls_ship_dt<=0 
-or LEN(sls_ship_dt)!=8 
-or sls_ship_dt>20500101
-or sls_ship_dt<19000101
+-- Handle invalid sls_ship_dt
+SELECT NULLIF(sls_ship_dt, 0) AS sls_ship_dt FROM bronze.crm_sales_details
+WHERE sls_ship_dt <= 0 OR LEN(sls_ship_dt) != 8 OR sls_ship_dt > 20500101 OR sls_ship_dt < 19000101;
 
-select
-sls_ord_num,
-sls_prd_key,
-sls_cust_id,
-sls_order_dt,
-sls_ship_dt,
-sls_due_dt,
-sls_sales,
-sls_quantity,
-sls_price
-from bronze.crm_sales_details
-where sls_cust_id not in (select cst_id from silver.crm_cust_info)
+-- Check for referential integrity (Customer ID)
+SELECT * FROM bronze.crm_sales_details WHERE sls_cust_id NOT IN (SELECT cst_id FROM silver.crm_cust_info);
 
-select
-sls_ord_num,
-sls_prd_key,
-sls_cust_id,
-sls_order_dt,
-sls_ship_dt,
-sls_due_dt,
-sls_sales,
-sls_quantity,
-sls_price
-from bronze.crm_sales_details
-where sls_prd_key not in (select prd_key from silver.crm_prd_info)
+-- Check for referential integrity (Product Key)
+SELECT * FROM bronze.crm_sales_details WHERE sls_prd_key NOT IN (SELECT prd_key FROM silver.crm_prd_info);
 
---check for invalid date orders
+-- Check for invalid date orders
+SELECT * FROM silver.crm_sales_details WHERE sls_order_dt > sls_ship_dt OR sls_order_dt > sls_due_dt;
 
-select * 
-from silver.crm_sales_details
-where sls_order_dt > sls_ship_dt or sls_order_dt > sls_due_dt
+-- Check data consistency between sales, quantity and price
+-- sales = quantity * price
+-- Values must not be NULL, zero or negative
+SELECT DISTINCT
+    sls_sales,
+    sls_quantity,
+    sls_price
+FROM silver.crm_sales_details
+WHERE sls_sales != sls_quantity * sls_price
+   OR sls_sales IS NULL OR sls_quantity IS NULL OR sls_price IS NULL
+   OR sls_sales <= 0 OR sls_quantity <= 0 OR sls_price <= 0;
 
---check data consistency: between sales, quantity and price
--- sales= quamtity*price
---values must not be NULL, zero or negative
-
-select distinct
-sls_sales,
-sls_quantity,
-sls_price
-from silver.crm_sales_details
-where sls_sales != sls_quantity * sls_price
-or sls_sales is null or sls_quantity is null or sls_price is null
-or sls_sales <=0 or sls_quantity <=0 or sls_price <=0
-
-select * from silver.crm_sales_details
+-- Check all results
+SELECT * FROM silver.crm_sales_details;
 
 /*
 =======================================================================================================
-										silver.silver.erp_cust_az12
+                                        silver.erp_cust_az12
 =======================================================================================================
 */
 
-select 
-case when cid like 'NAS%' then SUBSTRING(cid, 4, LEN(cid))
-	else cid
-end as cid,
-bdate,
-gen
-from bronze.erp_cust_az12
-where case when cid like 'NAS%' then SUBSTRING(cid, 4, LEN(cid))
-	else cid
-end not in (select distinct cst_key from silver.crm_cust_info)
+-- Identify missing customer keys
+SELECT 
+    CASE WHEN cid LIKE 'NAS%' THEN SUBSTRING(cid, 4, LEN(cid))
+         ELSE cid
+    END AS cid,
+    bdate,
+    gen
+FROM bronze.erp_cust_az12
+WHERE CASE WHEN cid LIKE 'NAS%' THEN SUBSTRING(cid, 4, LEN(cid))
+           ELSE cid
+      END NOT IN (SELECT DISTINCT cst_key FROM silver.crm_cust_info);
 
---identify out of range dates
-select distinct
-bdate 
-from silver.erp_cust_az12
-where bdate < '1924-01-01' or bdate > GETDATE()
+-- Identify out of range dates
+SELECT DISTINCT bdate FROM silver.erp_cust_az12
+WHERE bdate < '1924-01-01' OR bdate > GETDATE();
 
---data standadization & consistency
-select distinct 
-gen
-from silver.erp_cust_az12
+-- Data standardization & consistency
+SELECT DISTINCT gen FROM silver.erp_cust_az12;
 
-select * from silver.erp_cust_az12
+-- Check all results
+SELECT * FROM silver.erp_cust_az12;
